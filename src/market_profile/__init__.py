@@ -39,12 +39,22 @@ class MarketProfileSlice(object):
     def open_range(self):
         end = self.ds.iloc[0].name + self.mp.open_range_delta
         ds = self.ds.loc[:end]
-        return np.min(ds['Low']), np.max(ds['High'])
+        mp_field_calc_low, mp_field_calc_high = 'last', 'last'
+        
+        if 'Low' in self.ds.columns:
+            mp_field_calc_low, mp_field_calc_high = 'Low', 'High'
+
+        return np.min(ds[mp_field_calc_low]), np.max(ds[mp_field_calc_high])
 
     def initial_balance(self):
         end = self.ds.iloc[0].name + self.mp.initial_balance_delta
         ds = self.ds.loc[:end]
-        return np.min(ds['Low']), np.max(ds['High'])
+        mp_field_calc_low, mp_field_calc_high = 'last', 'last'
+        
+        if 'Low' in self.ds.columns:
+            mp_field_calc_low, mp_field_calc_high = 'Low', 'High'
+
+        return np.min(ds[mp_field_calc_low]), np.max(ds[mp_field_calc_low])
 
     def calculate_value_area(self):
         target_vol = self.total_volume * self.mp.value_area_pct
@@ -92,12 +102,20 @@ class MarketProfileSlice(object):
     # Calculate the market profile distribution (histogram)
     # http://eminimind.com/the-ultimate-guide-to-market-profile/
     def build_profile(self):
-        rounded_set = self.ds['Close'].apply(lambda x: self.mp.round_to_row(x))
+        mp_field_calc = 'last'
+        if 'last' not in self.ds.columns:
+            mp_field_calc = 'Close'
+        if 'Volume' not in self.ds.columns:
+            mp_vol_field = 'size'
+        else:
+            mp_vol_field = 'Volume'
+
+        rounded_set = self.ds[mp_field_calc].apply(lambda x: self.mp.round_to_row(x))
 
         if self.mp.mode == 'tpo':
-            self.profile = self.ds.groupby(rounded_set)['Close'].count()
+            self.profile = self.ds.groupby(rounded_set)[mp_field_calc].count()
         elif self.mp.mode == 'vol':
-            self.profile = self.ds.groupby(rounded_set)['Volume'].sum()
+            self.profile = self.ds.groupby(rounded_set)[mp_vol_field].sum()
         else:
             raise ValueError("Unrecognized mode: %s" % self.mp.mode)
 
